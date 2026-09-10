@@ -22,6 +22,7 @@ printf '%s' "$REGISTRY_PASSWORD" | helm registry login "$REGISTRY" --username "$
 helm pull "$CHART_REF" --version "$TARGET_VERSION" --destination "$DEST" >/dev/null
 helm registry logout "$REGISTRY" >/dev/null 2>&1 || true
 
-FILE=$(ls "$DEST"/*-"$TARGET_VERSION".tgz | head -n 1)
+FILE=$(find "$DEST" -maxdepth 1 -name "*-$TARGET_VERSION.tgz" | head -n 1)
+if [[ -z "$FILE" ]]; then echo "::error::helm pull finished but no *-$TARGET_VERSION.tgz found in $DEST"; exit 1; fi
 if [[ -n "${GITHUB_OUTPUT:-}" ]]; then echo "chart-file=$FILE" >> "$GITHUB_OUTPUT"; else echo "chart-file=$FILE"; fi
 echo "downloaded $FILE"
