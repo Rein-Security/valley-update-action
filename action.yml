@@ -1,0 +1,71 @@
+name: "Valley Update Check"
+description: "Resolves the Valley chart version your valley should run and compares it with the version you run today."
+author: "Rein Security"
+
+branding:
+  icon: "refresh-cw"
+  color: "blue"
+
+inputs:
+  channel:
+    description: "Release channel to follow: 'stable' or 'alpha'. Picks the chart (valley or valley-alpha) and the pointer tag."
+    required: false
+    default: "stable"
+  current-version:
+    description: "The chart version you run today, e.g. 0.61.0. Read it from your own config file, Pulumi stack, or Helm release."
+    required: true
+  registry:
+    description: "Rein registry host."
+    required: false
+    default: "hub.reinsec.app"
+  registry-username:
+    description: "Your Rein registry username (robot$<valleyId>). Pull-only is enough."
+    required: true
+  registry-password:
+    description: "Your Rein registry password."
+    required: true
+  pull-chart:
+    description: "Also download the chart .tgz when a new version is available. Needs helm on the runner."
+    required: false
+    default: "false"
+
+outputs:
+  changed:
+    description: "'true' when target-version differs from current-version."
+    value: ${{ steps.resolve.outputs.changed }}
+  target-version:
+    description: "The fixed chart version behind the channel pointer, e.g. 0.61.0."
+    value: ${{ steps.resolve.outputs.target-version }}
+  target-digest:
+    description: "OCI digest of the target chart, for auditing."
+    value: ${{ steps.resolve.outputs.target-digest }}
+  chart-ref:
+    description: "OCI reference of the chart without a version, e.g. oci://hub.reinsec.app/valley/valley."
+    value: ${{ steps.resolve.outputs.chart-ref }}
+  chart-file:
+    description: "Path to the downloaded .tgz. Empty unless pull-chart is 'true' and changed is 'true'."
+    value: ${{ steps.pull.outputs.chart-file }}
+
+runs:
+  using: "composite"
+  steps:
+    - id: resolve
+      shell: bash
+      env:
+        REGISTRY: ${{ inputs.registry }}
+        CHANNEL: ${{ inputs.channel }}
+        CURRENT_VERSION: ${{ inputs.current-version }}
+        REGISTRY_USERNAME: ${{ inputs.registry-username }}
+        REGISTRY_PASSWORD: ${{ inputs.registry-password }}
+      run: "${GITHUB_ACTION_PATH}/scripts/resolve.sh"
+
+    - id: pull
+      if: inputs.pull-chart == 'true' && steps.resolve.outputs.changed == 'true'
+      shell: bash
+      env:
+        REGISTRY: ${{ inputs.registry }}
+        REGISTRY_USERNAME: ${{ inputs.registry-username }}
+        REGISTRY_PASSWORD: ${{ inputs.registry-password }}
+        CHART_REF: ${{ steps.resolve.outputs.chart-ref }}
+        TARGET_VERSION: ${{ steps.resolve.outputs.target-version }}
+      run: "${GITHUB_ACTION_PATH}/scripts/pull-chart.sh"

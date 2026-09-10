@@ -1,0 +1,42 @@
+# Pulumi: your program reads the chart version from stack config (here valley:version).
+# This workflow sets the new value and opens a PR; your normal Pulumi CI applies it after merge.
+name: valley-auto-update
+on:
+  schedule: [{ cron: "0 3 * * *" }]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pulumi/actions@v5
+
+      - id: current
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+        run: echo "version=$(pulumi config get valley:version --stack prod)" >> "$GITHUB_OUTPUT"
+
+      - id: valley
+        uses: Rein-Security/valley-update-action@v1
+        with:
+          channel: stable
+          current-version: ${{ steps.current.outputs.version }}
+          registry-username: ${{ secrets.REIN_REGISTRY_USER }}
+          registry-password: ${{ secrets.REIN_REGISTRY_PASSWORD }}
+
+      - if: steps.valley.outputs.changed == 'true'
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+        run: pulumi config set valley:version "${{ steps.valley.outputs.target-version }}" --stack prod
+
+      - if: steps.valley.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          title: "chore: valley ${{ steps.valley.outputs.target-version }}"
+          commit-message: "chore: valley ${{ steps.valley.outputs.target-version }}"
+          branch: valley-update

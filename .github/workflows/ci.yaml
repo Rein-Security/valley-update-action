@@ -1,0 +1,101 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # Rein branch convention: type/KEY-123-short-desc. Inlined because a public repo cannot call private reusable workflows.
+  branch-name:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate branch name
+        env:
+          BRANCH: ${{ github.head_ref }}
+        run: |
+          if [[ "$BRANCH" =~ ^(revert-|release-please|dependabot) ]]; then echo "exempt branch"; exit 0; fi
+          if [[ ! "$BRANCH" =~ ^(feat|fix|chore|docs|refactor|test|style|perf)/[A-Z]+-[0-9]+-[a-z0-9-]+$ ]]; then
+            echo "::error::branch '$BRANCH' must look like type/KEY-123-short-desc with an UPPERCASE ticket key"; exit 1
+          fi
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: shellcheck
+        run: shellcheck scripts/*.sh
+
+      - name: actionlint
+        run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.7 -color
+
+      # Resolver logic against a local mock registry, no credentials involved
+      - name: unit test resolve.sh
+        run: test/run.sh
+
+  # Secrets are unavailable to fork PRs, so the integration job only runs for branches in this repo.
+  preflight:
+    runs-on: ubuntu-latest
+    outputs:
+      run-integration: ${{ steps.check.outputs.run }}
+    steps:
+      - id: check
+        env:
+          HAS_SECRET: ${{ secrets.HARBOR_DEV_ROBOT_PASSWORD != '' }}
+          IS_FORK: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+        run: |
+          if [[ "$IS_FORK" == "true" ]]; then echo "::notice::fork PR, integration test skipped"; echo "run=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          if [[ "$HAS_SECRET" != "true" ]]; then echo "::warning::HARBOR_DEV_ROBOT_PASSWORD not set, integration test skipped"; echo "run=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          echo "run=true" >> "$GITHUB_OUTPUT"
+
+  integration:
+    needs: [lint, preflight]
+    if: needs.preflight.outputs.run-integration == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Case 1: an old version is pinned, so an update must be reported
+      - id: outdated
+        uses: ./
+        with:
+          channel: stable
+          registry: hub.reinsec.dev
+          current-version: "0.0.1"
+          registry-username: ${{ secrets.HARBOR_DEV_ROBOT_USERNAME }}
+          registry-password: ${{ secrets.HARBOR_DEV_ROBOT_PASSWORD }}
+          pull-chart: "true"
+
+      - name: Assert update reported
+        env:
+          CHANGED: ${{ steps.outdated.outputs.changed }}
+          TARGET: ${{ steps.outdated.outputs.target-version }}
+          FILE: ${{ steps.outdated.outputs.chart-file }}
+        run: |
+          [[ "$CHANGED" == "true" ]] || { echo "::error::expected changed=true, got $CHANGED"; exit 1; }
+          [[ "$TARGET" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::target '$TARGET' is not a stable semver"; exit 1; }
+          [[ -s "$FILE" ]] || { echo "::error::chart file '$FILE' missing"; exit 1; }
+
+      # Case 2: already on the target, so nothing must be reported
+      - id: current
+        uses: ./
+        with:
+          channel: stable
+          registry: hub.reinsec.dev
+          current-version: ${{ steps.outdated.outputs.target-version }}
+          registry-username: ${{ secrets.HARBOR_DEV_ROBOT_USERNAME }}
+          registry-password: ${{ secrets.HARBOR_DEV_ROBOT_PASSWORD }}
+
+      - name: Assert no update reported
+        env:
+          CHANGED: ${{ steps.current.outputs.changed }}
+        run: |
+          [[ "$CHANGED" == "false" ]] || { echo "::error::expected changed=false, got $CHANGED"; exit 1; }
