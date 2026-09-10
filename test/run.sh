@@ -11,14 +11,18 @@ sleep 1
 export REGISTRY="127.0.0.1:$PORT" REGISTRY_SCHEME=http REGISTRY_USERNAME='robot$abc' REGISTRY_PASSWORD='s3cret'
 fail() { echo "FAIL: $*"; exit 1; }
 
+# Capture outputs the way GitHub does, so the test also works inside a runner
+export GITHUB_OUTPUT; GITHUB_OUTPUT="$(mktemp)"; unset GITHUB_STEP_SUMMARY
+run_resolve() { : > "$GITHUB_OUTPUT"; scripts/resolve.sh >/dev/null; cat "$GITHUB_OUTPUT"; }
+
 # Outdated customer: expect the pointer's fixed version, not the highest tag
-out=$(CHANNEL=stable CURRENT_VERSION=0.60.0 scripts/resolve.sh)
+out=$(CHANNEL=stable CURRENT_VERSION=0.60.0 run_resolve)
 grep -q '^target-version=0.61.0$' <<<"$out" || fail "expected target 0.61.0, got: $out"
 grep -q '^changed=true$' <<<"$out" || fail "expected changed=true"
 grep -q '^chart-ref=oci://127.0.0.1:'"$PORT"'/valley/valley$' <<<"$out" || fail "bad chart-ref"
 
 # Up to date, with a leading v
-out=$(CHANNEL=stable CURRENT_VERSION=v0.61.0 scripts/resolve.sh)
+out=$(CHANNEL=stable CURRENT_VERSION=v0.61.0 run_resolve)
 grep -q '^changed=false$' <<<"$out" || fail "expected changed=false"
 
 # Wrong password is a clear error
