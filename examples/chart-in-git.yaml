@@ -1,5 +1,11 @@
-# Chart committed to Git: you keep a copy of the chart under charts/valley and deploy from that folder.
-# This workflow downloads the new chart, replaces the folder, and opens a PR.
+# Chart committed to Git: you keep a copy of the Valley chart in your repo and deploy from that folder.
+#
+# Required layout, so an update never touches your settings:
+#   charts/valley/        the vendored Rein chart. Replaced wholesale on every update. Never edit files in here.
+#   values/valley.yaml    YOUR values (sizing, storage class, credentials refs, ...). Outside the chart, never touched.
+#
+# Deploy with the two together, for example: helm upgrade valley charts/valley -f values/valley.yaml
+# ArgoCD: spec.source.path: charts/valley  +  spec.source.helm.valueFiles: [../../values/valley.yaml]
 name: valley-auto-update
 on:
   schedule: [{ cron: "0 3 * * *" }]
@@ -27,14 +33,26 @@ jobs:
           registry-password: ${{ secrets.REIN_REGISTRY_PASSWORD }}
           pull-chart: "true"
 
+      # Refuse to continue if your values are not where this workflow expects them
+      - if: steps.valley.outputs.changed == 'true'
+        run: |
+          if [[ ! -f values/valley.yaml ]]; then
+            echo "::error::values/valley.yaml not found. Keep your values outside charts/valley, otherwise the update below would overwrite them."; exit 1
+          fi
+
+      # Replace only the vendored chart folder. values/ is not part of it.
       - if: steps.valley.outputs.changed == 'true'
         run: |
           rm -rf charts/valley
           tar -xzf "${{ steps.valley.outputs.chart-file }}" -C charts/
+          git --no-pager diff --stat -- charts/valley > "$RUNNER_TEMP/chart-diff.txt"
 
+      # The PR shows exactly which chart files changed, so anything unexpected is visible before merge
       - if: steps.valley.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@v6
         with:
           title: "chore: valley ${{ steps.valley.outputs.target-version }}"
           commit-message: "chore: valley ${{ steps.valley.outputs.target-version }}"
           branch: valley-update
+          add-paths: charts/valley
+          body-path: ${{ runner.temp }}/chart-diff.txt

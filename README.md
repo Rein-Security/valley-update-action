@@ -87,7 +87,7 @@ A major version bump (for example `0.61.0` to `1.0.0`) can carry breaking change
 | --- | --- |
 | **Flux** | Nothing to run. A `HelmRepository` of type `oci` plus a `HelmRelease` with a version range updates on its own. See [`examples/flux.yaml`](examples/flux.yaml). |
 | **Renovate** | Nothing to run. Add a `hostRules` entry for the Rein registry and Renovate bumps the chart like any dependency. See [`examples/renovate.json`](examples/renovate.json). |
-| ArgoCD, chart in Git, Pulumi, Helm | Use this action. Examples for each are in [`examples/`](examples/). |
+| ArgoCD, chart in Git, Pulumi, Helm | Use this action. Examples for each are in [`examples/`](examples/). If you vendor the chart into Git, keep your values **outside** the chart folder; the update replaces that folder. See [`examples/chart-in-git.yaml`](examples/chart-in-git.yaml). |
 
 ## Requirements
 
