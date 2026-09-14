@@ -5,10 +5,10 @@
   "description": "GitHub Action that resolves the Valley chart version a customer should run",
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   },
   "scripts": {
-    "test": "node --test test/",
+    "test": "node --test \"test/*.test.js\"",
     "build": "ncc build src/index.js -o dist --minify --license licenses.txt && echo '{\"type\":\"module\"}' > dist/package.json",
     "check-dist": "git diff --exit-code -- dist"
   },

@@ -48,5 +48,5 @@ outputs:
     description: "Path to the downloaded .tgz. Empty unless pull-chart is 'true' and changed is 'true'."
 
 runs:
-  using: "node20"
+  using: "node24"
   main: "dist/index.js"

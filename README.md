@@ -99,7 +99,7 @@ A major version bump (for example `0.61.0` to `1.0.0`) can carry breaking change
 
 ## Requirements
 
-- Any runner that can run Node 20 actions (all GitHub-hosted runners can). No `helm`, `docker`, or other tools needed.
+- Any runner that can run Node 24 actions. All GitHub-hosted runners can; a self-hosted runner needs actions/runner 2.327 or newer. No `helm`, `docker`, or other tools needed.
 - Network access from the runner to the Rein registry.
 - Your Rein registry credential stored as repository secrets. It is the same read-only credential your cluster uses to pull images.
 
@@ -111,7 +111,7 @@ A major version bump (for example `0.61.0` to `1.0.0`) can carry breaking change
 
 ## Developing
 
-A Node 20 JavaScript action. Source is in `src/`, the runner executes the bundle in `dist/`, so rebuild and commit `dist/` with every change.
+A Node 24 JavaScript action. Source is in `src/`, the runner executes the bundle in `dist/`, so rebuild and commit `dist/` with every change.
 
 ```bash
 npm ci
