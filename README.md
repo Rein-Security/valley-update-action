@@ -53,7 +53,7 @@ Most runs end at step 2 with `changed=false`.
 | `registry` | no | `hub.reinsec.app` | Rein registry host. |
 | `registry-username` | yes | | Your registry username, `robot$<valleyId>`. Pull-only is enough. |
 | `registry-password` | yes | | Your registry password. Store it as a repository secret. |
-| `pull-chart` | no | `false` | Also download the chart `.tgz` when an update exists. For customers who keep the chart inside their Git repo. Needs `helm` on the runner. |
+| `pull-chart` | no | `false` | Also download the chart `.tgz` when an update exists. For customers who keep the chart inside their Git repo. |
 
 ## Outputs
 
@@ -85,7 +85,7 @@ The pointer is only read. What lands in your config is always a fixed version li
 
 ## Requirements
 
-- A GitHub-hosted or self-hosted runner with `bash`, `curl`, `jq`. `helm` only if `pull-chart` is on. All are preinstalled on `ubuntu-latest`.
+- Any runner that can run Node 20 actions (all GitHub-hosted runners can). No `helm`, `docker`, or other tools needed.
 - Network access from the runner to the Rein registry.
 - Your Rein registry credential stored as repository secrets. It is the same read-only credential your cluster uses to pull images.
 
@@ -93,14 +93,17 @@ The pointer is only read. What lands in your config is always a fixed version li
 
 - The action never writes to your cluster or your repository. Your apply step does, and you control it.
 - Pin the action to a tag (`@v1`) or a commit SHA, as with any third-party action.
-- The registry password is passed to `helm` over stdin and the bearer token is masked in logs.
+- The password and the bearer token are masked in logs. The action talks to the registry over plain HTTPS with Node's built-in `fetch`; there are no shell commands.
 
 ## Developing
 
+A Node 20 JavaScript action. Source is in `src/`, the runner executes the bundle in `dist/`, so rebuild and commit `dist/` with every change.
+
 ```bash
-shellcheck scripts/*.sh
-test/run.sh          # resolver logic against a local mock registry, no credentials needed
-REGISTRY=hub.reinsec.dev CHANNEL=stable CURRENT_VERSION=0.0.1 REGISTRY_USERNAME='robot$…' REGISTRY_PASSWORD='…' scripts/resolve.sh
+npm ci
+npm test            # unit + entrypoint tests against a mock registry, no credentials needed
+npm run build       # bundles src/ into dist/ with ncc; commit the result
+ACTION_ENTRY=dist/index.js npm test
 ```
 
-CI lints and runs the mock test on every PR and runs an integration test against `hub.reinsec.dev` for branches in this repository. It needs the repository secrets `HARBOR_DEV_ROBOT_USERNAME` and `HARBOR_DEV_ROBOT_PASSWORD`, a pull-only robot on the dev registry. Releases are tags `v1.2.3`; the `release` workflow moves the floating `v1` tag.
+CI runs the tests on every PR, fails if `dist/` is stale, and runs an integration test against `hub.reinsec.dev` for branches in this repository. That job needs the repository secrets `HARBOR_DEV_ROBOT_USERNAME` and `HARBOR_DEV_ROBOT_PASSWORD`, a pull-only robot on the dev registry. Releases are tags `v1.2.3`; the `release` workflow moves the floating `v1` tag.

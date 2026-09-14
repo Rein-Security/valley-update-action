@@ -26,20 +26,35 @@ jobs:
             echo "::error::branch '$BRANCH' must look like type/KEY-123-short-desc with an UPPERCASE ticket key"; exit 1
           fi
 
-  lint:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
 
-      - name: shellcheck
-        run: shellcheck scripts/*.sh
+      - run: npm ci
+
+      # Unit tests against the mock registry, source entrypoint
+      - run: npm test
+
+      # The committed bundle must match the source
+      - run: npm run build
+      - name: Check dist is up to date
+        run: |
+          if ! git diff --quiet -- dist; then
+            echo "::error::dist/ is stale. Run 'npm run build' and commit the result."; git --no-pager diff --stat -- dist; exit 1
+          fi
+
+      # Same tests, but through the bundle the runner actually executes
+      - run: npm test
+        env:
+          ACTION_ENTRY: dist/index.js
 
       - name: actionlint
         run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.7 -color
-
-      # Resolver logic against a local mock registry, no credentials involved
-      - name: unit test resolve.sh
-        run: test/run.sh
 
   # Secrets are unavailable to fork PRs, so the integration job only runs for branches in this repo.
   preflight:
@@ -57,7 +72,7 @@ jobs:
           echo "run=true" >> "$GITHUB_OUTPUT"
 
   integration:
-    needs: [lint, preflight]
+    needs: [test, preflight]
     if: needs.preflight.outputs.run-integration == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -83,6 +98,7 @@ jobs:
           [[ "$CHANGED" == "true" ]] || { echo "::error::expected changed=true, got $CHANGED"; exit 1; }
           [[ "$TARGET" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::target '$TARGET' is not a stable semver"; exit 1; }
           [[ -s "$FILE" ]] || { echo "::error::chart file '$FILE' missing"; exit 1; }
+          tar -tzf "$FILE" | grep -q '^valley/Chart.yaml$' || { echo "::error::'$FILE' is not a valley chart"; exit 1; }
 
       # Case 2: already on the target, so nothing must be reported
       - id: current

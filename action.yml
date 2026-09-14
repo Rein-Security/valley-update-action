@@ -25,47 +25,22 @@ inputs:
     description: "Your Rein registry password."
     required: true
   pull-chart:
-    description: "Also download the chart .tgz when a new version is available. Needs helm on the runner."
+    description: "Also download the chart .tgz when a new version is available."
     required: false
     default: "false"
 
 outputs:
   changed:
     description: "'true' when target-version differs from current-version."
-    value: ${{ steps.resolve.outputs.changed }}
   target-version:
     description: "The fixed chart version behind the channel pointer, e.g. 0.61.0."
-    value: ${{ steps.resolve.outputs.target-version }}
   target-digest:
     description: "OCI digest of the target chart, for auditing."
-    value: ${{ steps.resolve.outputs.target-digest }}
   chart-ref:
     description: "OCI reference of the chart without a version, e.g. oci://hub.reinsec.app/valley/valley."
-    value: ${{ steps.resolve.outputs.chart-ref }}
   chart-file:
     description: "Path to the downloaded .tgz. Empty unless pull-chart is 'true' and changed is 'true'."
-    value: ${{ steps.pull.outputs.chart-file }}
 
 runs:
-  using: "composite"
-  steps:
-    - id: resolve
-      shell: bash
-      env:
-        REGISTRY: ${{ inputs.registry }}
-        CHANNEL: ${{ inputs.channel }}
-        CURRENT_VERSION: ${{ inputs.current-version }}
-        REGISTRY_USERNAME: ${{ inputs.registry-username }}
-        REGISTRY_PASSWORD: ${{ inputs.registry-password }}
-      run: "${GITHUB_ACTION_PATH}/scripts/resolve.sh"
-
-    - id: pull
-      if: inputs.pull-chart == 'true' && steps.resolve.outputs.changed == 'true'
-      shell: bash
-      env:
-        REGISTRY: ${{ inputs.registry }}
-        REGISTRY_USERNAME: ${{ inputs.registry-username }}
-        REGISTRY_PASSWORD: ${{ inputs.registry-password }}
-        CHART_REF: ${{ steps.resolve.outputs.chart-ref }}
-        TARGET_VERSION: ${{ steps.resolve.outputs.target-version }}
-      run: "${GITHUB_ACTION_PATH}/scripts/pull-chart.sh"
+  using: "node20"
+  main: "dist/index.js"
