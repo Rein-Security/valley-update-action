@@ -44,6 +44,13 @@ export function normalizeVersion(version) {
 }
 
 /**
+ * Returns true when moving from `current` to `target` changes the major version.
+ */
+export function isMajorChange(current, target) {
+  return versionKey(current).core[0] !== versionKey(target).core[0];
+}
+
+/**
  * Follows the channel pointer to the fixed version behind it and returns { version, digest }.
  */
 export async function resolveTarget(registry, channel, { maxCandidates = DEFAULT_MAX_CANDIDATES } = {}) {

@@ -28,10 +28,16 @@ inputs:
     description: "Also download the chart .tgz when a new version is available."
     required: false
     default: "false"
+  allow-major:
+    description: "Let a new major version through. By default the action fails when the target's major version differs from current-version, since major upgrades may need manual steps."
+    required: false
+    default: "false"
 
 outputs:
   changed:
     description: "'true' when target-version differs from current-version."
+  major-change:
+    description: "'true' when target-version has a different major version than current-version."
   target-version:
     description: "The fixed chart version behind the channel pointer, e.g. 0.61.0."
   target-digest:

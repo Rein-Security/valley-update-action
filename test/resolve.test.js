@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { after, before, describe, it } from "node:test";
 import { Registry, RegistryError } from "../src/registry.js";
-import { CHANNELS, normalizeVersion, resolveTarget, sortVersionsDesc } from "../src/resolve.js";
+import { CHANNELS, isMajorChange, normalizeVersion, resolveTarget, sortVersionsDesc } from "../src/resolve.js";
 import { CHART_BYTES, MOCK_PASSWORD, MOCK_USER, startMockRegistry } from "./mock-registry.js";
 
 let mock;
@@ -21,6 +21,14 @@ function client(channel, password = MOCK_PASSWORD) {
 describe("sortVersionsDesc", () => {
   it("should order stable and alpha versions newest first", () => {
     assert.deepEqual(sortVersionsDesc(["0.9.0", "0.10.0", "0.10.0-alpha.2", "0.10.0-alpha.10"]), ["0.10.0", "0.10.0-alpha.10", "0.10.0-alpha.2", "0.9.0"]);
+  });
+});
+
+describe("isMajorChange", () => {
+  it("should flag only a change of the first version number", () => {
+    assert.equal(isMajorChange("0.61.0", "1.0.0"), true);
+    assert.equal(isMajorChange("1.2.3", "1.9.0"), false);
+    assert.equal(isMajorChange("0.60.0", "0.61.0-alpha.2"), false);
   });
 });
 
