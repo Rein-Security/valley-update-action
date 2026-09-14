@@ -120,4 +120,4 @@ npm run build       # bundles src/ into dist/ with ncc; commit the result
 ACTION_ENTRY=dist/index.js npm test
 ```
 
-CI runs the tests on every PR, fails if `dist/` is stale, and runs an integration test against `hub.reinsec.dev` for branches in this repository. That job needs the repository secrets `HARBOR_DEV_ROBOT_USERNAME` and `HARBOR_DEV_ROBOT_PASSWORD`, a pull-only robot on the dev registry. Releases are tags `v1.2.3`; the `release` workflow moves the floating `v1` tag.
+CI runs the tests on every PR, fails if `dist/` is stale, and runs an integration test against `hub.reinsec.app` for branches in this repository. That job needs the repository secrets `HARBOR_ROBOT_USERNAME` and `HARBOR_ROBOT_PASSWORD`, a pull-only robot scoped to the `valley` project. Run logs are public, so the test deliberately targets the customer registry: it shows the current customer version and nothing internal. Releases are tags `v1.2.3`; the `release` workflow moves the floating `v1` tag.

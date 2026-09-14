@@ -64,11 +64,11 @@ jobs:
     steps:
       - id: check
         env:
-          HAS_SECRET: ${{ secrets.HARBOR_DEV_ROBOT_PASSWORD != '' }}
+          HAS_SECRET: ${{ secrets.HARBOR_ROBOT_PASSWORD != '' }}
           IS_FORK: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
         run: |
           if [[ "$IS_FORK" == "true" ]]; then echo "::notice::fork PR, integration test skipped"; echo "run=false" >> "$GITHUB_OUTPUT"; exit 0; fi
-          if [[ "$HAS_SECRET" != "true" ]]; then echo "::warning::HARBOR_DEV_ROBOT_PASSWORD not set, integration test skipped"; echo "run=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          if [[ "$HAS_SECRET" != "true" ]]; then echo "::warning::HARBOR_ROBOT_PASSWORD not set, integration test skipped"; echo "run=false" >> "$GITHUB_OUTPUT"; exit 0; fi
           echo "run=true" >> "$GITHUB_OUTPUT"
 
   integration:
@@ -83,10 +83,10 @@ jobs:
         uses: ./
         with:
           channel: stable
-          registry: hub.reinsec.dev
+          registry: hub.reinsec.app
           current-version: "0.0.1"
-          registry-username: ${{ secrets.HARBOR_DEV_ROBOT_USERNAME }}
-          registry-password: ${{ secrets.HARBOR_DEV_ROBOT_PASSWORD }}
+          registry-username: ${{ secrets.HARBOR_ROBOT_USERNAME }}
+          registry-password: ${{ secrets.HARBOR_ROBOT_PASSWORD }}
           pull-chart: "true"
 
       - name: Assert update reported
@@ -105,10 +105,10 @@ jobs:
         uses: ./
         with:
           channel: stable
-          registry: hub.reinsec.dev
+          registry: hub.reinsec.app
           current-version: ${{ steps.outdated.outputs.target-version }}
-          registry-username: ${{ secrets.HARBOR_DEV_ROBOT_USERNAME }}
-          registry-password: ${{ secrets.HARBOR_DEV_ROBOT_PASSWORD }}
+          registry-username: ${{ secrets.HARBOR_ROBOT_USERNAME }}
+          registry-password: ${{ secrets.HARBOR_ROBOT_PASSWORD }}
 
       - name: Assert no update reported
         env:
