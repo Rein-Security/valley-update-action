@@ -1,9 +1,18 @@
-# Pulumi: your program reads the chart version from stack config (here valley:version).
+# Pulumi: your program reads the chart version from stack config.
 # This workflow sets the new value and opens a PR; your normal Pulumi CI applies it after merge.
+#
+# Edit only the env block below to match your setup.
 name: valley-auto-update
 on:
   schedule: [{ cron: "0 3 * * *" }]
   workflow_dispatch:
+
+env:
+  CHANNEL: stable                       # stable or alpha
+  PULUMI_STACK: prod                    # stack that runs Valley
+  CONFIG_KEY: valley:version            # config key holding the chart version
+  PULUMI_DIR: infra                     # folder with Pulumi.yaml and Pulumi.<stack>.yaml
+  PR_BRANCH: valley-update              # branch the update PR is opened from
 
 permissions:
   contents: write
@@ -12,6 +21,9 @@ permissions:
 jobs:
   update:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ env.PULUMI_DIR }}
     steps:
       - uses: actions/checkout@v4
       - uses: pulumi/actions@v5
@@ -19,12 +31,12 @@ jobs:
       - id: current
         env:
           PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
-        run: echo "version=$(pulumi config get valley:version --stack prod)" >> "$GITHUB_OUTPUT"
+        run: echo "version=$(pulumi config get "$CONFIG_KEY" --stack "$PULUMI_STACK")" >> "$GITHUB_OUTPUT"
 
       - id: valley
         uses: Rein-Security/valley-update-action@v1
         with:
-          channel: stable
+          channel: ${{ env.CHANNEL }}
           current-version: ${{ steps.current.outputs.version }}
           registry-username: ${{ secrets.REIN_REGISTRY_USER }}
           registry-password: ${{ secrets.REIN_REGISTRY_PASSWORD }}
@@ -32,11 +44,13 @@ jobs:
       - if: steps.valley.outputs.changed == 'true'
         env:
           PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
-        run: pulumi config set valley:version "${{ steps.valley.outputs.target-version }}" --stack prod
+          TARGET: ${{ steps.valley.outputs.target-version }}
+        run: pulumi config set "$CONFIG_KEY" "$TARGET" --stack "$PULUMI_STACK"
 
       - if: steps.valley.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@v6
         with:
           title: "chore: valley ${{ steps.valley.outputs.target-version }}"
           commit-message: "chore: valley ${{ steps.valley.outputs.target-version }}"
-          branch: valley-update
+          branch: ${{ env.PR_BRANCH }}
+          add-paths: ${{ env.PULUMI_DIR }}/Pulumi.${{ env.PULUMI_STACK }}.yaml

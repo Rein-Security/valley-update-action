@@ -1,15 +1,23 @@
 # Chart committed to Git: you keep a copy of the Valley chart in your repo and deploy from that folder.
 #
 # Required layout, so an update never touches your settings:
-#   charts/valley/        the vendored Rein chart. Replaced wholesale on every update. Never edit files in here.
-#   values/valley.yaml    YOUR values (sizing, storage class, credentials refs, ...). Outside the chart, never touched.
+#   CHART_DIR      the vendored Rein chart. Replaced wholesale on every update. Never edit files in here.
+#   VALUES_FILE    YOUR values (sizing, storage class, credential refs, ...). Outside the chart, never touched.
 #
-# Deploy with the two together, for example: helm upgrade valley charts/valley -f values/valley.yaml
-# ArgoCD: spec.source.path: charts/valley  +  spec.source.helm.valueFiles: [../../values/valley.yaml]
+# Deploy with the two together, for example: helm upgrade valley $CHART_DIR -f $VALUES_FILE
+# ArgoCD: spec.source.path: <CHART_DIR>  +  spec.source.helm.valueFiles: [<relative path to VALUES_FILE>]
+#
+# Edit only the env block below to match your repo.
 name: valley-auto-update
 on:
   schedule: [{ cron: "0 3 * * *" }]
   workflow_dispatch:
+
+env:
+  CHANNEL: stable                       # stable or alpha
+  CHART_DIR: charts/valley              # vendored chart folder, replaced on update
+  VALUES_FILE: values/valley.yaml       # your values, must live outside CHART_DIR
+  PR_BRANCH: valley-update              # branch the update PR is opened from
 
 permissions:
   contents: write
@@ -22,12 +30,12 @@ jobs:
       - uses: actions/checkout@v4
 
       - id: current
-        run: echo "version=$(yq '.version' charts/valley/Chart.yaml)" >> "$GITHUB_OUTPUT"
+        run: echo "version=$(yq '.version' "$CHART_DIR/Chart.yaml")" >> "$GITHUB_OUTPUT"
 
       - id: valley
         uses: Rein-Security/valley-update-action@v1
         with:
-          channel: stable
+          channel: ${{ env.CHANNEL }}
           current-version: ${{ steps.current.outputs.version }}
           registry-username: ${{ secrets.REIN_REGISTRY_USER }}
           registry-password: ${{ secrets.REIN_REGISTRY_PASSWORD }}
@@ -36,16 +44,22 @@ jobs:
       # Refuse to continue if your values are not where this workflow expects them
       - if: steps.valley.outputs.changed == 'true'
         run: |
-          if [[ ! -f values/valley.yaml ]]; then
-            echo "::error::values/valley.yaml not found. Keep your values outside charts/valley, otherwise the update below would overwrite them."; exit 1
+          if [[ ! -f "$VALUES_FILE" ]]; then
+            echo "::error::$VALUES_FILE not found. Keep your values outside $CHART_DIR, otherwise the update below would overwrite them."; exit 1
           fi
+          case "$VALUES_FILE" in "$CHART_DIR"/*) echo "::error::$VALUES_FILE is inside $CHART_DIR and would be overwritten. Move it out."; exit 1;; esac
 
-      # Replace only the vendored chart folder. values/ is not part of it.
+      # Replace only the vendored chart folder. VALUES_FILE is not part of it.
       - if: steps.valley.outputs.changed == 'true'
+        env:
+          CHART_FILE: ${{ steps.valley.outputs.chart-file }}
         run: |
-          rm -rf charts/valley
-          tar -xzf "${{ steps.valley.outputs.chart-file }}" -C charts/
-          git --no-pager diff --stat -- charts/valley > "$RUNNER_TEMP/chart-diff.txt"
+          tmp=$(mktemp -d)
+          tar -xzf "$CHART_FILE" -C "$tmp"
+          rm -rf "$CHART_DIR"
+          mkdir -p "$(dirname "$CHART_DIR")"
+          mv "$tmp"/* "$CHART_DIR"
+          git --no-pager diff --stat -- "$CHART_DIR" > "$RUNNER_TEMP/chart-diff.txt"
 
       # The PR shows exactly which chart files changed, so anything unexpected is visible before merge
       - if: steps.valley.outputs.changed == 'true'
@@ -53,6 +67,6 @@ jobs:
         with:
           title: "chore: valley ${{ steps.valley.outputs.target-version }}"
           commit-message: "chore: valley ${{ steps.valley.outputs.target-version }}"
-          branch: valley-update
-          add-paths: charts/valley
+          branch: ${{ env.PR_BRANCH }}
+          add-paths: ${{ env.CHART_DIR }}
           body-path: ${{ runner.temp }}/chart-diff.txt

@@ -12,28 +12,36 @@ on:
   schedule: [{ cron: "0 3 * * *" }]   # nightly
   workflow_dispatch:
 
+# Edit only this block to match your repo
+env:
+  CHANNEL: stable
+  APP_FILE: argo/valley.yaml                  # this example: an ArgoCD Application
+  VERSION_PATH: .spec.source.targetRevision   # where the chart version sits in that file
+
 jobs:
   update:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      # 1. Read the version you run today from your own config (this example: an ArgoCD Application)
+      # 1. Read the version you run today from your own config
       - id: current
-        run: echo "version=$(yq '.spec.source.targetRevision' argo/valley.yaml)" >> "$GITHUB_OUTPUT"
+        run: echo "version=$(yq "$VERSION_PATH" "$APP_FILE")" >> "$GITHUB_OUTPUT"
 
       # 2. Ask Rein which version you should run
       - id: valley
         uses: Rein-Security/valley-update-action@v1
         with:
-          channel: stable
+          channel: ${{ env.CHANNEL }}
           current-version: ${{ steps.current.outputs.version }}
           registry-username: ${{ secrets.REIN_REGISTRY_USER }}
           registry-password: ${{ secrets.REIN_REGISTRY_PASSWORD }}
 
       # 3. Apply it your way. This example bumps the file and opens a pull request.
       - if: steps.valley.outputs.changed == 'true'
-        run: yq -i '.spec.source.targetRevision = "${{ steps.valley.outputs.target-version }}"' argo/valley.yaml
+        env:
+          TARGET: ${{ steps.valley.outputs.target-version }}
+        run: yq -i "$VERSION_PATH = \"$TARGET\"" "$APP_FILE"
 
       - if: steps.valley.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@v6
@@ -42,7 +50,7 @@ jobs:
           branch: valley-update
 ```
 
-Most runs end at step 2 with `changed=false`.
+Most runs end at step 2 with `changed=false`. Every example in [`examples/`](examples/) follows the same rule: customer-specific paths and names sit in one `env:` block at the top, nothing else needs editing.
 
 ## Inputs
 
