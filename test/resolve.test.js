@@ -33,14 +33,14 @@ describe("isMajorChange", () => {
 });
 
 describe("CHANNELS", () => {
-  it("should keep alpha builds out of stable and everything else out of alpha", () => {
-    assert.equal(CHANNELS.stable.versionRe.test("0.61.0"), true);
-    assert.equal(CHANNELS.stable.versionRe.test("0.61.0-preview.2"), true);
-    assert.equal(CHANNELS.stable.versionRe.test("0.61.0-rc.1"), true);
-    assert.equal(CHANNELS.stable.versionRe.test("0.61.0-alpha.3"), false);
-    assert.equal(CHANNELS.stable.versionRe.test("stable"), false);
-    assert.equal(CHANNELS.alpha.versionRe.test("0.61.0-alpha.3"), true);
-    assert.equal(CHANNELS.alpha.versionRe.test("0.61.0"), false);
+  it("should accept any semver tag on both channels and reject pointer names", () => {
+    for (const channel of [CHANNELS.stable, CHANNELS.alpha]) {
+      assert.equal(channel.versionRe.test("0.61.0"), true);
+      assert.equal(channel.versionRe.test("0.61.0-preview.1788371032"), true);
+      assert.equal(channel.versionRe.test("0.61.0-alpha.1788986579"), true);
+      assert.equal(channel.versionRe.test("stable"), false);
+      assert.equal(channel.versionRe.test("alpha"), false);
+    }
   });
 });
 

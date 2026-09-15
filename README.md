@@ -56,7 +56,7 @@ Most runs end at step 2 with `changed=false`. Every example in [`examples/`](exa
 
 | Input | Required | Default | Meaning |
 | --- | --- | --- | --- |
-| `channel` | no | `stable` | `stable` or `alpha`. Picks the chart (`valley` or `valley-alpha`) and the pointer it follows. |
+| `channel` | no | `stable` | `stable` or `alpha`. Picks the chart (`valley` or `valley-alpha`) and the pointer it follows. Any version tag of that chart can be promoted, whatever its prerelease suffix. |
 | `current-version` | yes | | The chart version you run today, e.g. `0.61.0`. Read it from your own config, see the examples. |
 | `registry` | no | `hub.reinsec.app` | Rein registry host. |
 | `registry-username` | yes | | Your registry username, `robot$<valleyId>`. Pull-only is enough. |
