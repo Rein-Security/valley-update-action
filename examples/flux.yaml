@@ -1,0 +1,31 @@
+# Flux: no action needed. Flux watches the registry and installs the newest version in the range.
+# The secret rein-registry is your existing read-only registry login (type kubernetes.io/dockerconfigjson).
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: rein
+  namespace: valley
+spec:
+  type: oci
+  interval: 1h
+  url: oci://hub.reinsec.app/valley
+  secretRef:
+    name: rein-registry
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: valley
+  namespace: valley
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: valley
+      version: ">=0.61.0 <1.0.0"   # newest match, prereleases excluded
+      sourceRef:
+        kind: HelmRepository
+        name: rein
+  valuesFrom:
+    - kind: Secret
+      name: valley-values

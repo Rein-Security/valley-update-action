@@ -1,0 +1,50 @@
+# Plain Helm: a runner with cluster access upgrades the release directly.
+# No pull request and no review step, so use this only if you accept that trade-off.
+#
+# Edit only the env block below to match your cluster.
+name: valley-auto-update
+on:
+  schedule: [{ cron: "0 3 * * *" }]
+  workflow_dispatch:
+
+env:
+  CHANNEL: stable                       # stable or alpha
+  REGISTRY: hub.reinsec.app             # Rein registry
+  RELEASE: valley                       # helm release name
+  NAMESPACE: valley                     # namespace Valley runs in
+  VALUES_FILE: values.yaml              # your values file in this repo
+
+jobs:
+  update:
+    runs-on: ubuntu-latest   # or a self-hosted runner that can reach your cluster
+    env:
+      KUBECONFIG: ${{ github.workspace }}/.kubeconfig
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure cluster access
+        env:
+          KUBECONFIG_B64: ${{ secrets.KUBECONFIG }}
+        run: echo "$KUBECONFIG_B64" | base64 -d > "$KUBECONFIG"
+
+      - id: current
+        run: echo "version=$(helm list -n "$NAMESPACE" -o json | jq -r --arg r "$RELEASE" '.[] | select(.name==$r) | .chart' | sed "s/^valley\(-alpha\)\{0,1\}-//")" >> "$GITHUB_OUTPUT"
+
+      - id: valley
+        uses: Rein-Security/valley-update-action@v1
+        with:
+          channel: ${{ env.CHANNEL }}
+          registry: ${{ env.REGISTRY }}
+          current-version: ${{ steps.current.outputs.version }}
+          registry-username: ${{ secrets.REIN_REGISTRY_USER }}
+          registry-password: ${{ secrets.REIN_REGISTRY_PASSWORD }}
+
+      - if: steps.valley.outputs.changed == 'true'
+        env:
+          REGISTRY_USER: ${{ secrets.REIN_REGISTRY_USER }}
+          REGISTRY_PASSWORD: ${{ secrets.REIN_REGISTRY_PASSWORD }}
+          CHART_REF: ${{ steps.valley.outputs.chart-ref }}
+          TARGET: ${{ steps.valley.outputs.target-version }}
+        run: |
+          printf '%s' "$REGISTRY_PASSWORD" | helm registry login "$REGISTRY" --username "$REGISTRY_USER" --password-stdin
+          helm upgrade "$RELEASE" "$CHART_REF" --version "$TARGET" -n "$NAMESPACE" -f "$VALUES_FILE" --reuse-values --wait

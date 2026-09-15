@@ -1,0 +1,52 @@
+name: "Valley Update Check"
+description: "Resolves the Valley chart version your valley should run and compares it with the version you run today."
+author: "Rein Security"
+
+branding:
+  icon: "refresh-cw"
+  color: "blue"
+
+inputs:
+  channel:
+    description: "Release channel to follow: 'stable' or 'alpha'. Picks the chart (valley or valley-alpha) and the pointer tag."
+    required: false
+    default: "stable"
+  current-version:
+    description: "The chart version you run today, e.g. 0.61.0. Read it from your own config file, Pulumi stack, or Helm release."
+    required: true
+  registry:
+    description: "Rein registry host."
+    required: false
+    default: "hub.reinsec.app"
+  registry-username:
+    description: "Your Rein registry username (robot$<valleyId>). Pull-only is enough."
+    required: true
+  registry-password:
+    description: "Your Rein registry password."
+    required: true
+  pull-chart:
+    description: "Also download the chart .tgz when a new version is available."
+    required: false
+    default: "false"
+  allow-major:
+    description: "Let a new major version through. By default the action fails when the target's major version differs from current-version, since major upgrades may need manual steps."
+    required: false
+    default: "false"
+
+outputs:
+  changed:
+    description: "'true' when target-version differs from current-version."
+  major-change:
+    description: "'true' when target-version has a different major version than current-version."
+  target-version:
+    description: "The fixed chart version behind the channel pointer, e.g. 0.61.0."
+  target-digest:
+    description: "OCI digest of the target chart, for auditing."
+  chart-ref:
+    description: "OCI reference of the chart without a version, e.g. oci://hub.reinsec.app/valley/valley."
+  chart-file:
+    description: "Path to the downloaded .tgz. Empty unless pull-chart is 'true' and changed is 'true'."
+
+runs:
+  using: "node24"
+  main: "dist/index.js"

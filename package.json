@@ -1,0 +1,21 @@
+{
+  "name": "valley-update-action",
+  "version": "0.1.0",
+  "private": true,
+  "description": "GitHub Action that resolves the Valley chart version a customer should run",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "test": "node --test \"test/*.test.js\"",
+    "build": "ncc build src/index.js -o dist --minify --license licenses.txt && echo '{\"type\":\"module\"}' > dist/package.json",
+    "check-dist": "git diff --exit-code -- dist"
+  },
+  "dependencies": {
+    "@actions/core": "^1.11.1"
+  },
+  "devDependencies": {
+    "@vercel/ncc": "^0.38.3"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "//": "Renovate: no action needed. This hostRules entry lets Renovate read the Rein registry; it then bumps the Valley chart in your Argo, Flux, or Helm files like any other dependency. Encrypt the password with the Renovate encryption tool or read it from an environment variable.",
+  "hostRules": [
+    {
+      "matchHost": "hub.reinsec.app",
+      "hostType": "docker",
+      "username": "robot$<valleyId>",
+      "encrypted": {
+        "password": "<encrypted with https://app.renovatebot.com/encrypt>"
+      }
+    }
+  ],
+  "packageRules": [
+    {
+      "matchPackageNames": ["hub.reinsec.app/valley/valley"],
+      "ignoreUnstable": true,
+      "groupName": "valley"
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+# ArgoCD: your Application pins the chart with spec.source.targetRevision.
+# ArgoCD does not update chart versions on its own, so this workflow bumps the file and opens a PR.
+#
+# Edit only the env block below to match your repo.
+name: valley-auto-update
+on:
+  schedule: [{ cron: "0 3 * * *" }]
+  workflow_dispatch:
+
+env:
+  CHANNEL: stable                       # stable or alpha
+  APP_FILE: argo/valley.yaml            # your ArgoCD Application manifest
+  VERSION_PATH: .spec.source.targetRevision   # where the chart version sits in that file (yq path)
+  PR_BRANCH: valley-update              # branch the update PR is opened from
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: current
+        run: echo "version=$(yq "$VERSION_PATH" "$APP_FILE")" >> "$GITHUB_OUTPUT"
+
+      - id: valley
+        uses: Rein-Security/valley-update-action@v1
+        with:
+          channel: ${{ env.CHANNEL }}
+          current-version: ${{ steps.current.outputs.version }}
+          registry-username: ${{ secrets.REIN_REGISTRY_USER }}
+          registry-password: ${{ secrets.REIN_REGISTRY_PASSWORD }}
+
+      - if: steps.valley.outputs.changed == 'true'
+        env:
+          TARGET: ${{ steps.valley.outputs.target-version }}
+        run: yq -i "$VERSION_PATH = \"$TARGET\"" "$APP_FILE"
+
+      - if: steps.valley.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          title: "chore: valley ${{ steps.valley.outputs.target-version }}"
+          commit-message: "chore: valley ${{ steps.valley.outputs.target-version }}"
+          branch: ${{ env.PR_BRANCH }}
+          add-paths: ${{ env.APP_FILE }}
+          body: "Rein promoted Valley ${{ steps.valley.outputs.target-version }} (digest ${{ steps.valley.outputs.target-digest }})."
