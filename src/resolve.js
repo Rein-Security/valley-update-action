@@ -1,10 +1,13 @@
 import { RegistryError } from "./registry.js";
 
 /**
- * Release channels: which chart to look at, which pointer tag to follow, which version shapes count.
+ * Release channels: which chart to look at, which pointer tag to follow, which version tags may name
+ * the artifact behind it. The pointer's digest is what identifies the version; the shape filter only
+ * keeps alpha builds out of the stable channel and vice versa, so a stable pointer may sit on a
+ * prerelease such as 0.61.0-preview.2 (dev and staging registries publish those).
  */
 export const CHANNELS = {
-  stable: { chart: "valley", pointer: "stable", versionRe: /^\d+\.\d+\.\d+$/ },
+  stable: { chart: "valley", pointer: "stable", versionRe: /^\d+\.\d+\.\d+(-(?!alpha\.)[0-9A-Za-z.-]+)?$/ },
   alpha: { chart: "valley-alpha", pointer: "alpha", versionRe: /^\d+\.\d+\.\d+-alpha\.\d+$/ },
 };
 

@@ -32,6 +32,18 @@ describe("isMajorChange", () => {
   });
 });
 
+describe("CHANNELS", () => {
+  it("should keep alpha builds out of stable and everything else out of alpha", () => {
+    assert.equal(CHANNELS.stable.versionRe.test("0.61.0"), true);
+    assert.equal(CHANNELS.stable.versionRe.test("0.61.0-preview.2"), true);
+    assert.equal(CHANNELS.stable.versionRe.test("0.61.0-rc.1"), true);
+    assert.equal(CHANNELS.stable.versionRe.test("0.61.0-alpha.3"), false);
+    assert.equal(CHANNELS.stable.versionRe.test("stable"), false);
+    assert.equal(CHANNELS.alpha.versionRe.test("0.61.0-alpha.3"), true);
+    assert.equal(CHANNELS.alpha.versionRe.test("0.61.0"), false);
+  });
+});
+
 describe("normalizeVersion", () => {
   it("should strip a leading v and whitespace", () => {
     assert.equal(normalizeVersion(" v0.61.0\n"), "0.61.0");
