@@ -33,14 +33,14 @@ describe("isMajorChange", () => {
 });
 
 describe("CHANNELS", () => {
-  it("should keep alpha builds out of stable and everything else out of alpha", () => {
-    assert.equal(CHANNELS.stable.versionRe.test("0.61.0"), true);
-    assert.equal(CHANNELS.stable.versionRe.test("0.61.0-preview.2"), true);
-    assert.equal(CHANNELS.stable.versionRe.test("0.61.0-rc.1"), true);
-    assert.equal(CHANNELS.stable.versionRe.test("0.61.0-alpha.3"), false);
-    assert.equal(CHANNELS.stable.versionRe.test("stable"), false);
-    assert.equal(CHANNELS.alpha.versionRe.test("0.61.0-alpha.3"), true);
-    assert.equal(CHANNELS.alpha.versionRe.test("0.61.0"), false);
+  it("should accept any semver tag on both channels, reject the pointer name, and point at stable everywhere", () => {
+    for (const channel of [CHANNELS.stable, CHANNELS.alpha]) {
+      assert.equal(channel.pointer, "stable");
+      assert.equal(channel.versionRe.test("0.61.0"), true);
+      assert.equal(channel.versionRe.test("0.61.0-preview.1788371032"), true);
+      assert.equal(channel.versionRe.test("0.61.0-alpha.1788986579"), true);
+      assert.equal(channel.versionRe.test("stable"), false);
+    }
   });
 });
 
@@ -71,7 +71,7 @@ describe("resolveTarget", () => {
   it("should fail clearly when the channel has no pointer", async () => {
     const registry = client(CHANNELS.alpha);
     await registry.login();
-    await assert.rejects(resolveTarget(registry, CHANNELS.alpha), (err) => err instanceof RegistryError && /no 'alpha' pointer/.test(err.message));
+    await assert.rejects(resolveTarget(registry, CHANNELS.alpha), (err) => err instanceof RegistryError && /no 'stable' pointer in .*valley\/valley-alpha/.test(err.message));
   });
 });
 
