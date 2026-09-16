@@ -56,7 +56,7 @@ Most runs end at step 2 with `changed=false`. Every example in [`examples/`](exa
 
 | Input | Required | Default | Meaning |
 | --- | --- | --- | --- |
-| `channel` | no | `stable` | `stable` or `alpha`. Picks the chart (`valley` or `valley-alpha`) and the pointer it follows. |
+| `channel` | no | `stable` | `stable` or `alpha`. Picks the chart: `valley` or `valley-alpha`. Any version tag of that chart can be promoted, whatever its prerelease suffix. |
 | `current-version` | yes | | The chart version you run today, e.g. `0.61.0`. Read it from your own config, see the examples. |
 | `registry` | no | `hub.reinsec.app` | Rein registry host. |
 | `registry-username` | yes | | Your registry username, `robot$<valleyId>`. Pull-only is enough. |
@@ -77,7 +77,7 @@ Most runs end at step 2 with `changed=false`. Every example in [`examples/`](exa
 
 ## How it decides
 
-The Rein registry holds every version ever built, including internal ones. When Rein promotes a version for customers, it moves a pointer tag named `stable` (or `alpha`) onto that version. The action:
+The Rein registry holds every version ever built, including internal ones. When Rein promotes a version of a chart for customers, it moves the tag `stable` onto that version, in the `valley` chart for the stable channel and in the `valley-alpha` chart for the alpha channel. The action:
 
 1. Reads the pointer and gets the digest it points at.
 2. Lists version tags, newest first, and finds the one with the same digest.
