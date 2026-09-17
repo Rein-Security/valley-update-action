@@ -2,7 +2,7 @@ import os from "node:os";
 import path from "node:path";
 import * as core from "@actions/core";
 import { Registry } from "./registry.js";
-import { CHANNELS, isMajorChange, normalizeVersion, resolveTarget } from "./resolve.js";
+import { CHANNELS, isDowngrade, isMajorChange, normalizeVersion, resolveTarget } from "./resolve.js";
 
 const PROJECT = "valley";
 
@@ -20,6 +20,7 @@ export async function run() {
   const password = core.getInput("registry-password", { required: true });
   const pullChart = core.getBooleanInput("pull-chart");
   const allowMajor = core.getBooleanInput("allow-major");
+  const allowDowngrade = core.getBooleanInput("allow-downgrade");
   core.setSecret(password);
 
   // Resolve
@@ -29,6 +30,7 @@ export async function run() {
   const target = await resolveTarget(registry, channel);
   const changed = target.version !== current;
   const major = changed && isMajorChange(current, target.version);
+  const downgrade = changed && isDowngrade(current, target.version);
 
   // Outputs, written before the major guard so a failed run still shows what it found
   core.setOutput("changed", String(changed));
@@ -36,7 +38,12 @@ export async function run() {
   core.setOutput("target-digest", target.digest);
   core.setOutput("chart-ref", `oci://${host}/${registry.repo}`);
   core.setOutput("major-change", String(major));
+  core.setOutput("downgrade", String(downgrade));
 
+  // Moving backwards is almost always a promotion mistake on Rein's side; refuse it unless the customer opted in
+  if (downgrade && !allowDowngrade) {
+    throw new Error(`Valley ${target.version} is older than the ${current} you run. The promoted version moved backwards, so this action will not hand it to your apply step. If you really want to roll back, set allow-downgrade: true.`);
+  }
   // A major version is a breaking change; refuse it unless the customer opted in
   if (major && !allowMajor) {
     throw new Error(`Valley ${target.version} is a new major version (you run ${current}). Major upgrades may need manual steps, so this action will not hand it to your apply step. Read the release notes, then set allow-major: true to proceed.`);
@@ -57,6 +64,7 @@ export async function run() {
         ["You should run", `\`${target.version}\``],
         ["Update needed", `**${changed}**`],
         ["Major change", `${major}`],
+        ["Downgrade", `${downgrade}`],
       ])
       .write();
   }

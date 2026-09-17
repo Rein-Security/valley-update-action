@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { after, before, describe, it } from "node:test";
 import { Registry, RegistryError } from "../src/registry.js";
-import { CHANNELS, isMajorChange, normalizeVersion, resolveTarget, sortVersionsDesc } from "../src/resolve.js";
+import { CHANNELS, isDowngrade, isMajorChange, normalizeVersion, resolveTarget, sortVersionsDesc } from "../src/resolve.js";
 import { CHART_BYTES, MOCK_PASSWORD, MOCK_USER, startMockRegistry } from "./mock-registry.js";
 
 let mock;
@@ -41,6 +41,15 @@ describe("CHANNELS", () => {
       assert.equal(channel.versionRe.test("0.61.0-alpha.1788986579"), true);
       assert.equal(channel.versionRe.test("stable"), false);
     }
+  });
+});
+
+describe("isDowngrade", () => {
+  it("should flag a target older than current and nothing else", () => {
+    assert.equal(isDowngrade("0.84.0-alpha.1788986579", "0.78.0-preview.plat399"), true);
+    assert.equal(isDowngrade("0.61.0", "0.61.0-alpha.3"), true);
+    assert.equal(isDowngrade("0.61.0", "0.62.0"), false);
+    assert.equal(isDowngrade("0.61.0", "0.61.0"), false);
   });
 });
 

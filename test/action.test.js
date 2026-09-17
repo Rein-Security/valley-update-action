@@ -21,7 +21,7 @@ async function runAction(inputs) {
   const dir = await mkdtemp(path.join(os.tmpdir(), "valley-action-"));
   const outputFile = path.join(dir, "output");
   await writeFile(outputFile, "");
-  const env = { ...process.env, GITHUB_OUTPUT: outputFile, RUNNER_TEMP: dir, INPUT_REGISTRY: `127.0.0.1:${mock.port}`, INPUT_CHANNEL: "stable", "INPUT_REGISTRY-USERNAME": MOCK_USER, "INPUT_REGISTRY-PASSWORD": MOCK_PASSWORD, "INPUT_PULL-CHART": "false", "INPUT_ALLOW-MAJOR": "false" };
+  const env = { ...process.env, GITHUB_OUTPUT: outputFile, RUNNER_TEMP: dir, INPUT_REGISTRY: `127.0.0.1:${mock.port}`, INPUT_CHANNEL: "stable", "INPUT_REGISTRY-USERNAME": MOCK_USER, "INPUT_REGISTRY-PASSWORD": MOCK_PASSWORD, "INPUT_PULL-CHART": "false", "INPUT_ALLOW-MAJOR": "false", "INPUT_ALLOW-DOWNGRADE": "false" };
   for (const [k, v] of Object.entries(inputs)) env[`INPUT_${k.toUpperCase()}`] = v;
   delete env.GITHUB_STEP_SUMMARY;
 
@@ -73,6 +73,21 @@ describe("action entrypoint", () => {
     assert.equal(code, 0);
     assert.equal(outputs["changed"], "true");
     assert.equal(outputs["major-change"], "true");
+  });
+
+  it("should fail on a downgrade and still write outputs", async () => {
+    const { outputs, stdout, code } = await runAction({ "current-version": "0.62.0" });
+    assert.equal(code, 1);
+    assert.match(stdout, /::error::Valley 0\.61\.0 is older than the 0\.62\.0 you run/);
+    assert.equal(outputs["downgrade"], "true");
+    assert.equal(outputs["target-version"], "0.61.0");
+  });
+
+  it("should let a downgrade through with allow-downgrade", async () => {
+    const { outputs, code } = await runAction({ "current-version": "0.62.0", "allow-downgrade": "true" });
+    assert.equal(code, 0);
+    assert.equal(outputs["changed"], "true");
+    assert.equal(outputs["downgrade"], "true");
   });
 
   it("should fail with a clear message on a wrong password", async () => {

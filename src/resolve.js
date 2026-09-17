@@ -56,6 +56,13 @@ export function isMajorChange(current, target) {
 }
 
 /**
+ * Returns true when `target` is an older version than `current` (same rules as sortVersionsDesc).
+ */
+export function isDowngrade(current, target) {
+  return sortVersionsDesc([current, target])[0] === current && current !== target;
+}
+
+/**
  * Follows the channel pointer to the fixed version behind it and returns { version, digest }.
  */
 export async function resolveTarget(registry, channel, { maxCandidates = DEFAULT_MAX_CANDIDATES } = {}) {
