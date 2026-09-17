@@ -1,7 +1,7 @@
 # Chart committed to Git: you keep a copy of the Valley chart in your repo and deploy from that folder.
 #
 # Required layout, so an update never touches your settings:
-#   CHART_DIR      the vendored Rein chart. Replaced wholesale on every update. Never edit files in here.
+#   CHART_DIR      the vendored Rein chart. Created by the first run, replaced wholesale on every update. Never edit files in here.
 #   VALUES_FILE    YOUR values (sizing, storage class, credential refs, ...). Outside the chart, never touched.
 #
 # Deploy with the two together, for example: helm upgrade valley $CHART_DIR -f $VALUES_FILE
@@ -29,8 +29,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Before the first run there is no vendored chart yet: report 0.0.0 so the first run seeds the folder
       - id: current
-        run: echo "version=$(yq '.version' "$CHART_DIR/Chart.yaml")" >> "$GITHUB_OUTPUT"
+        run: |
+          if [[ -f "$CHART_DIR/Chart.yaml" ]]; then
+            echo "version=$(yq '.version' "$CHART_DIR/Chart.yaml")" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=0.0.0" >> "$GITHUB_OUTPUT"
+          fi
 
       - id: valley
         uses: Rein-Security/valley-update-action@v1
