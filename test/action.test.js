@@ -60,8 +60,9 @@ describe("action entrypoint", () => {
     assert.equal(outputs["chart-file"], undefined);
   });
 
+  // 1.0.0 -> 0.61.0 is also a downgrade, so that guard is switched off to exercise the major one alone
   it("should fail on a major version change and still write outputs", async () => {
-    const { outputs, stdout, code } = await runAction({ "current-version": "1.0.0" });
+    const { outputs, stdout, code } = await runAction({ "current-version": "1.0.0", "allow-downgrade": "true" });
     assert.equal(code, 1);
     assert.match(stdout, /::error::Valley 0\.61\.0 is a new major version \(you run 1\.0\.0\)/);
     assert.equal(outputs["major-change"], "true");
@@ -69,7 +70,11 @@ describe("action entrypoint", () => {
   });
 
   it("should let a major version through with allow-major", async () => {
-    const { outputs, code } = await runAction({ "current-version": "1.0.0", "allow-major": "true" });
+    const { outputs, code } = await runAction({
+      "current-version": "1.0.0",
+      "allow-major": "true",
+      "allow-downgrade": "true",
+    });
     assert.equal(code, 0);
     assert.equal(outputs["changed"], "true");
     assert.equal(outputs["major-change"], "true");
