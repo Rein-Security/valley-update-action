@@ -16,29 +16,53 @@ export const CHANNELS = {
 const DEFAULT_MAX_CANDIDATES = 50;
 
 /**
- * Splits a version into { core: [X, Y, Z], pre: N | null } for X.Y.Z and X.Y.Z-<label>.N.
+ * Splits a version into { core: [X, Y, Z], pre: [identifiers...] }. Prerelease identifiers stay as
+ * strings so "0.pr1510" and "1788986579" both survive; compareIdentifiers applies the semver rules.
  */
 export function versionKey(version) {
-  const [corePart, prePart] = version.split("-", 2);
-  const core = corePart.split(".").map(Number);
-  const pre = prePart ? Number(prePart.split(".").pop()) : null;
-  return { core, pre };
+  const [corePart, ...preParts] = version.split("-");
+  const pre = preParts.length ? preParts.join("-").split(".") : null;
+  return { core: corePart.split(".").map(Number), pre };
 }
 
 /**
- * Returns the versions sorted newest first; a release sorts above its own prereleases, as in semver.
+ * Semver prerelease identifier order: numeric identifiers compare numerically and sort before
+ * alphanumeric ones, which compare lexically.
+ */
+function compareIdentifiers(a, b) {
+  const na = /^\d+$/.test(a);
+  const nb = /^\d+$/.test(b);
+  if (na && nb) return Number(a) - Number(b);
+  if (na !== nb) return na ? -1 : 1;
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/**
+ * Semver comparison: negative when a is older than b. A release sorts above its own prereleases,
+ * and prereleases compare identifier by identifier, a shorter list losing to a longer equal prefix.
+ */
+export function compareVersions(a, b) {
+  const ka = versionKey(a);
+  const kb = versionKey(b);
+  for (let i = 0; i < 3; i++) {
+    const diff = (ka.core[i] ?? 0) - (kb.core[i] ?? 0);
+    if (diff !== 0) return diff;
+  }
+  if (ka.pre === null || kb.pre === null) return (ka.pre === null ? 1 : 0) - (kb.pre === null ? 1 : 0);
+  for (let i = 0; i < Math.max(ka.pre.length, kb.pre.length); i++) {
+    if (ka.pre[i] === undefined) return -1;
+    if (kb.pre[i] === undefined) return 1;
+    const diff = compareIdentifiers(ka.pre[i], kb.pre[i]);
+    if (diff !== 0) return diff;
+  }
+  return 0;
+}
+
+/**
+ * Returns the versions sorted newest first.
  */
 export function sortVersionsDesc(versions) {
-  return [...versions].sort((a, b) => {
-    const ka = versionKey(a);
-    const kb = versionKey(b);
-    for (let i = 0; i < 3; i++) {
-      const diff = (kb.core[i] ?? 0) - (ka.core[i] ?? 0);
-      if (diff !== 0) return diff;
-    }
-    if (ka.pre === null || kb.pre === null) return (ka.pre === null ? 0 : 1) - (kb.pre === null ? 0 : 1);
-    return kb.pre - ka.pre;
-  });
+  return [...versions].sort((a, b) => compareVersions(b, a));
 }
 
 /**
@@ -53,6 +77,13 @@ export function normalizeVersion(version) {
  */
 export function isMajorChange(current, target) {
   return versionKey(current).core[0] !== versionKey(target).core[0];
+}
+
+/**
+ * Returns true when `target` is an older version than `current` (same rules as sortVersionsDesc).
+ */
+export function isDowngrade(current, target) {
+  return compareVersions(target, current) < 0;
 }
 
 /**

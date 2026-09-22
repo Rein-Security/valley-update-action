@@ -62,6 +62,7 @@ Most runs end at step 2 with `changed=false`. Every example in [`examples/`](exa
 | `registry-username` | yes | | Your registry username, `robot$<valleyId>`. Pull-only is enough. |
 | `registry-password` | yes | | Your registry password. Store it as a repository secret. |
 | `pull-chart` | no | `false` | Also download the chart `.tgz` when an update exists. For customers who keep the chart inside their Git repo. |
+| `allow-downgrade` | no | `false` | Let a version older than `current-version` through. By default the run **fails** on a downgrade, since a promoted version moving backwards is usually a mistake on Rein's side. |
 | `allow-major` | no | `false` | Let a new major version through. By default the run **fails** when the target has a different major version than `current-version`. See below. |
 
 ## Outputs
@@ -69,6 +70,7 @@ Most runs end at step 2 with `changed=false`. Every example in [`examples/`](exa
 | Output | Example | Use it for |
 | --- | --- | --- |
 | `changed` | `true` | Gate your apply step: `if: steps.valley.outputs.changed == 'true'`. |
+| `downgrade` | `false` | `true` when the target is older than `current-version`. Set even when the run fails on it. |
 | `major-change` | `false` | `true` when the target is a new major version. Set even when the run fails on it. |
 | `target-version` | `0.61.0` | The number to write into your config. Always a fixed version, never `stable`. |
 | `target-digest` | `sha256:…` | Audit trail of exactly which chart was resolved. |
@@ -85,7 +87,9 @@ The Rein registry holds every version ever built, including internal ones. When 
 
 The pointer is only read. What lands in your config is always a fixed version like `0.61.0`.
 
-### Major versions are not applied automatically
+### Downgrades and major versions are not applied automatically
+
+If the promoted version is **older** than the one you run, the action writes its outputs, prints an error, and fails the job. That almost always means a promotion mistake on our side rather than something you should apply. To roll back on purpose, set `allow-downgrade: true` for that run.
 
 A major version bump (for example `0.61.0` to `1.0.0`) can carry breaking changes or manual migration steps. When the target has a different major version than `current-version`, the action writes its outputs, prints an error, and **fails the job**, so your apply step never runs. The failed run is your signal to read the release notes. To let it through, set `allow-major: true` for that run and remove it afterwards.
 
