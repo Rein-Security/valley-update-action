@@ -1,0 +1,27 @@
+name: Bug in the action
+description: The action itself behaves wrongly. Issues are public.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **This issue is public.** Do not paste your registry username or password, your valley ID, tokens, or your configuration. Redact them from logs before posting. For anything about your own valley, contact Rein support instead.
+  - type: input
+    id: version
+    attributes:
+      label: Action version
+      description: The tag or commit SHA in your `uses:` line, e.g. `v1.0.1`.
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Redacted log output
+      description: The action's log lines, with credentials, valley IDs and hostnames removed.
+      render: text

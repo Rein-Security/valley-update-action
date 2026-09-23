@@ -1,6 +1,7 @@
 # ArgoCD: your Application pins the chart with spec.source.targetRevision.
 # ArgoCD does not update chart versions on its own, so this workflow bumps the file and opens a PR.
 #
+# Opening the PR needs the repository or org setting "Allow GitHub Actions to create and approve pull requests".
 # Edit only the env block below to match your repo.
 name: valley-auto-update
 on:
@@ -21,7 +22,7 @@ jobs:
   update:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - id: current
         run: echo "version=$(yq "$VERSION_PATH" "$APP_FILE")" >> "$GITHUB_OUTPUT"
@@ -40,7 +41,7 @@ jobs:
         run: yq -i "$VERSION_PATH = \"$TARGET\"" "$APP_FILE"
 
       - if: steps.valley.outputs.changed == 'true'
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v8
         with:
           title: "chore: valley ${{ steps.valley.outputs.target-version }}"
           commit-message: "chore: valley ${{ steps.valley.outputs.target-version }}"

@@ -95,6 +95,12 @@ describe("action entrypoint", () => {
     assert.equal(outputs["downgrade"], "true");
   });
 
+  it("should fail clearly when current-version is not a version, such as yq's null", async () => {
+    const { stdout, code } = await runAction({ "current-version": "null" });
+    assert.equal(code, 1);
+    assert.match(stdout, /::error::current-version 'null' is not a version like 0\.61\.0/);
+  });
+
   it("should fail with a clear message on a wrong password", async () => {
     const { stdout, code } = await runAction({ "current-version": "0.61.0", "registry-password": "wrong" });
     assert.equal(code, 1);

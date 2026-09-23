@@ -29,8 +29,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
           cache: npm
@@ -56,7 +56,8 @@ jobs:
       - name: actionlint
         run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 -color .github/workflows/*.yaml examples/argocd.yaml examples/chart-in-git.yaml examples/pulumi.yaml examples/helm.yaml
 
-  # Secrets are unavailable to fork PRs, so the integration job only runs for branches in this repo.
+  # The registry credential lives in the "integration" environment, which only main can use,
+  # so the integration job never runs for pull requests or forks.
   preflight:
     runs-on: ubuntu-latest
     outputs:
@@ -64,22 +65,31 @@ jobs:
     steps:
       - id: check
         env:
-          HAS_SECRET: ${{ secrets.HARBOR_ROBOT_PASSWORD != '' }}
-          IS_FORK: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+          ON_MAIN: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
         run: |
-          if [[ "$IS_FORK" == "true" ]]; then echo "::notice::fork PR, integration test skipped"; echo "run=false" >> "$GITHUB_OUTPUT"; exit 0; fi
-          if [[ "$HAS_SECRET" != "true" ]]; then echo "::warning::HARBOR_ROBOT_PASSWORD not set, integration test skipped"; echo "run=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          if [[ "$ON_MAIN" != "true" ]]; then echo "::notice::not on main, integration test skipped"; echo "run=false" >> "$GITHUB_OUTPUT"; exit 0; fi
           echo "run=true" >> "$GITHUB_OUTPUT"
 
   integration:
     needs: [test, preflight]
     if: needs.preflight.outputs.run-integration == 'true'
     runs-on: ubuntu-latest
+    environment: integration
     steps:
-      - uses: actions/checkout@v4
+      # Skip cleanly until the environment holds the credential
+      - id: secret
+        env:
+          HAS_SECRET: ${{ secrets.HARBOR_ROBOT_PASSWORD != '' }}
+        run: |
+          if [[ "$HAS_SECRET" != "true" ]]; then echo "::warning::HARBOR_ROBOT_PASSWORD not set in the integration environment, integration test skipped"; echo "run=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          echo "run=true" >> "$GITHUB_OUTPUT"
+
+      - if: steps.secret.outputs.run == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # Case 1: an old version is pinned, so an update must be reported
       - id: outdated
+        if: steps.secret.outputs.run == 'true'
         uses: ./
         with:
           channel: stable
@@ -90,6 +100,7 @@ jobs:
           pull-chart: "true"
 
       - name: Assert update reported
+        if: steps.secret.outputs.run == 'true'
         env:
           CHANGED: ${{ steps.outdated.outputs.changed }}
           TARGET: ${{ steps.outdated.outputs.target-version }}
@@ -102,6 +113,7 @@ jobs:
 
       # Case 2: already on the target, so nothing must be reported
       - id: current
+        if: steps.secret.outputs.run == 'true'
         uses: ./
         with:
           channel: stable
@@ -111,6 +123,7 @@ jobs:
           registry-password: ${{ secrets.HARBOR_ROBOT_PASSWORD }}
 
       - name: Assert no update reported
+        if: steps.secret.outputs.run == 'true'
         env:
           CHANGED: ${{ steps.current.outputs.changed }}
         run: |

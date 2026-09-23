@@ -1,7 +1,7 @@
 import os from "node:os";
 import path from "node:path";
 import * as core from "@actions/core";
-import { Registry } from "./registry.js";
+import { isLoopback, Registry } from "./registry.js";
 import { CHANNELS, isDowngrade, isMajorChange, normalizeVersion, resolveTarget } from "./resolve.js";
 
 const PROJECT = "valley";
@@ -24,7 +24,8 @@ export async function run() {
   core.setSecret(password);
 
   // Resolve
-  const scheme = process.env.VALLEY_REGISTRY_SCHEME ?? "https"; // http only for the test mock
+  // Plain http only for the local test registry, never for a real host
+  const scheme = process.env.VALLEY_REGISTRY_SCHEME === "http" && isLoopback(host) ? "http" : "https";
   const registry = new Registry({ host, repo: `${PROJECT}/${channel.chart}`, username, password, scheme });
   core.setSecret(await registry.login());
   const target = await resolveTarget(registry, channel);
@@ -46,7 +47,7 @@ export async function run() {
   }
   // A major version is a breaking change; refuse it unless the customer opted in
   if (major && !allowMajor) {
-    throw new Error(`Valley ${target.version} is a new major version (you run ${current}). Major upgrades may need manual steps, so this action will not hand it to your apply step. Read the release notes, then set allow-major: true to proceed.`);
+    throw new Error(`Valley ${target.version} is a new major version (you run ${current}). Major upgrades may need manual steps, so this action will not hand it to your apply step. Read the release notes at https://github.com/Rein-Security/valley-update-action/releases, then set allow-major: true to proceed.`);
   }
   if (pullChart && changed) {
     const file = await registry.downloadChart(target.version, path.join(process.env.RUNNER_TEMP ?? os.tmpdir(), "valley-chart"));
