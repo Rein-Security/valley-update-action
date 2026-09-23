@@ -22,7 +22,7 @@ jobs:
   update:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # 1. Read the version you run today from your own config
       - id: current
@@ -44,13 +44,15 @@ jobs:
         run: yq -i "$VERSION_PATH = \"$TARGET\"" "$APP_FILE"
 
       - if: steps.valley.outputs.changed == 'true'
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v8
         with:
           title: "chore: valley ${{ steps.valley.outputs.target-version }}"
           branch: valley-update
 ```
 
 Most runs end at step 2 with `changed=false`. Every example in [`examples/`](examples/) follows the same rule: customer-specific paths and names sit in one `env:` block at the top, nothing else needs editing.
+
+Workflows that open a pull request need the repository or organization setting **Allow GitHub Actions to create and approve pull requests** (Settings → Actions → General).
 
 ## Inputs
 
@@ -79,7 +81,7 @@ Most runs end at step 2 with `changed=false`. Every example in [`examples/`](exa
 
 ## How it decides
 
-The Rein registry holds every version ever built, including internal ones. When Rein promotes a version of a chart for customers, it moves the tag `stable` onto that version, in the `valley` chart for the stable channel and in the `valley-alpha` chart for the alpha channel. The action:
+The Rein registry holds the published Valley versions. When Rein promotes one of them for customers, it moves the tag `stable` onto that version, in the `valley` chart for the stable channel and in the `valley-alpha` chart for the alpha channel. The action:
 
 1. Reads the pointer and gets the digest it points at.
 2. Lists version tags, newest first, and finds the one with the same digest.
@@ -91,7 +93,7 @@ The pointer is only read. What lands in your config is always a fixed version li
 
 If the promoted version is **older** than the one you run, the action writes its outputs, prints an error, and fails the job. That almost always means a promotion mistake on our side rather than something you should apply. To roll back on purpose, set `allow-downgrade: true` for that run.
 
-A major version bump (for example `0.61.0` to `1.0.0`) can carry breaking changes or manual migration steps. When the target has a different major version than `current-version`, the action writes its outputs, prints an error, and **fails the job**, so your apply step never runs. The failed run is your signal to read the release notes. To let it through, set `allow-major: true` for that run and remove it afterwards.
+A major version bump (for example `0.61.0` to `1.0.0`) can carry breaking changes or manual migration steps. When the target has a different major version than `current-version`, the action writes its outputs, prints an error, and **fails the job**, so your apply step never runs. The failed run is your signal to read the [release notes](https://github.com/Rein-Security/valley-update-action/releases). To let it through, set `allow-major: true` for that run and remove it afterwards.
 
 ## You may not need this
 
@@ -110,8 +112,12 @@ A major version bump (for example `0.61.0` to `1.0.0`) can carry breaking change
 ## Security notes
 
 - The action never writes to your cluster or your repository. Your apply step does, and you control it.
-- Pin the action to a tag (`@v1`) or a commit SHA, as with any third-party action.
+- Pin the action to `@v1` or a commit SHA, as with any third-party action. The examples use `@v1`.
 - The password and the bearer token are masked in logs. The action talks to the registry over plain HTTPS with Node's built-in `fetch`; there are no shell commands.
+
+## Support
+
+Issues here are public. For anything about your own valley, registry credentials, or configuration, contact your Rein support contact, and never post your valley ID, credentials, or config in an issue. Report vulnerabilities privately, see [SECURITY.md](SECURITY.md).
 
 ## Developing
 
@@ -124,4 +130,4 @@ npm run build       # bundles src/ into dist/ with ncc; commit the result
 ACTION_ENTRY=dist/index.js npm test
 ```
 
-CI runs the tests on every PR, fails if `dist/` is stale, and runs an integration test against `hub.reinsec.app` for branches in this repository. That job needs the repository secrets `HARBOR_ROBOT_USERNAME` and `HARBOR_ROBOT_PASSWORD`, a pull-only robot scoped to the `valley` project. Run logs are public, so the test deliberately targets the customer registry: it shows the current customer version and nothing internal. Releases are tags `v1.2.3`; the `release` workflow moves the floating `v1` tag.
+CI runs the tests on every PR and fails if `dist/` is stale. On `main` it also runs an integration test against `hub.reinsec.app`, using a pull-only credential stored in the `integration` environment, which only `main` can use. Releases are tags `v1.2.3`; the `release` workflow moves the floating `v1` tag.

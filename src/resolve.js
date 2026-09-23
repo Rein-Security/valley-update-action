@@ -1,10 +1,9 @@
 import { RegistryError } from "./registry.js";
 
 /**
- * Release channels: which chart to look at. A channel is a chart repository; every semver tag in it
- * may name the artifact behind the pointer. The prerelease suffix only says which environment built
- * the chart (dev: -alpha.<epoch>, staging: -preview.<epoch>, prod: none), so it is not a channel
- * marker. Whatever the chart, the promoted version carries the tag "stable"; its digest identifies it.
+ * Release channels: which chart to look at. A channel is a chart repository, and any version tag in it
+ * can be the promoted one, whatever its prerelease suffix. The promoted version carries the tag
+ * "stable"; its digest identifies it.
  */
 const SEMVER_TAG = /^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/;
 const PROMOTED_TAG = "stable";
@@ -17,7 +16,7 @@ const DEFAULT_MAX_CANDIDATES = 50;
 
 /**
  * Splits a version into { core: [X, Y, Z], pre: [identifiers...] }. Prerelease identifiers stay as
- * strings so "0.pr1510" and "1788986579" both survive; compareIdentifiers applies the semver rules.
+ * strings so "0.rc1" and "20260101" both survive; compareIdentifiers applies the semver rules.
  */
 export function versionKey(version) {
   const [corePart, ...preParts] = version.split("-");
@@ -66,10 +65,14 @@ export function sortVersionsDesc(versions) {
 }
 
 /**
- * Trims whitespace and a leading "v" from a customer-supplied version.
+ * Trims whitespace and a leading "v" from a customer-supplied version and checks it is a semver version.
  */
 export function normalizeVersion(version) {
-  return String(version).trim().replace(/^v/, "");
+  const normalized = String(version ?? "").trim().replace(/^v/, "");
+  if (!SEMVER_TAG.test(normalized)) {
+    throw new Error(`current-version '${version}' is not a version like 0.61.0. Check the step that reads it from your config: yq prints 'null' when the path does not exist.`);
+  }
+  return normalized;
 }
 
 /**

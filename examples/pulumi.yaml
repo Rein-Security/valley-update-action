@@ -1,6 +1,7 @@
 # Pulumi: your program reads the chart version from stack config.
 # This workflow sets the new value and opens a PR; your normal Pulumi CI applies it after merge.
 #
+# Opening the PR needs the repository or org setting "Allow GitHub Actions to create and approve pull requests".
 # Edit only the env block below to match your setup.
 name: valley-auto-update
 on:
@@ -25,7 +26,7 @@ jobs:
       run:
         working-directory: ${{ env.PULUMI_DIR }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: pulumi/actions@v5
 
       - id: current
@@ -48,7 +49,7 @@ jobs:
         run: pulumi config set "$CONFIG_KEY" "$TARGET" --stack "$PULUMI_STACK"
 
       - if: steps.valley.outputs.changed == 'true'
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v8
         with:
           title: "chore: valley ${{ steps.valley.outputs.target-version }}"
           commit-message: "chore: valley ${{ steps.valley.outputs.target-version }}"

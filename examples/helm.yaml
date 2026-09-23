@@ -17,15 +17,16 @@ env:
 jobs:
   update:
     runs-on: ubuntu-latest   # or a self-hosted runner that can reach your cluster
-    env:
-      KUBECONFIG: ${{ github.workspace }}/.kubeconfig
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Configure cluster access
         env:
           KUBECONFIG_B64: ${{ secrets.KUBECONFIG }}
-        run: echo "$KUBECONFIG_B64" | base64 -d > "$KUBECONFIG"
+        # Outside the workspace, so it can never be committed or uploaded with it
+        run: |
+          (umask 077; echo "$KUBECONFIG_B64" | base64 -d > "$RUNNER_TEMP/kubeconfig")
+          echo "KUBECONFIG=$RUNNER_TEMP/kubeconfig" >> "$GITHUB_ENV"
 
       - id: current
         run: echo "version=$(helm list -n "$NAMESPACE" -o json | jq -r --arg r "$RELEASE" '.[] | select(.name==$r) | .chart' | sed "s/^valley\(-alpha\)\{0,1\}-//")" >> "$GITHUB_OUTPUT"

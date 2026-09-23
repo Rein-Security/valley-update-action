@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Help with your Valley
+    url: https://github.com/Rein-Security/valley-update-action#support
+    about: Anything about your own valley, registry credentials, or configuration goes to your Rein support contact, not here. Issues are public; never post your valley ID, credentials, or config.
+  - name: Report a vulnerability
+    url: https://github.com/Rein-Security/valley-update-action/security/advisories/new
+    about: Report security problems privately, never in a public issue.

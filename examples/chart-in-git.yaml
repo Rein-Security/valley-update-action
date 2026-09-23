@@ -7,6 +7,7 @@
 # Deploy with the two together, for example: helm upgrade valley $CHART_DIR -f $VALUES_FILE
 # ArgoCD: spec.source.path: <CHART_DIR>  +  spec.source.helm.valueFiles: [<relative path to VALUES_FILE>]
 #
+# Opening the PR needs the repository or org setting "Allow GitHub Actions to create and approve pull requests".
 # Edit only the env block below to match your repo.
 name: valley-auto-update
 on:
@@ -27,7 +28,7 @@ jobs:
   update:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - id: current
         run: echo "version=$(yq '.version' "$CHART_DIR/Chart.yaml")" >> "$GITHUB_OUTPUT"
@@ -63,7 +64,7 @@ jobs:
 
       # The PR shows exactly which chart files changed, so anything unexpected is visible before merge
       - if: steps.valley.outputs.changed == 'true'
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v8
         with:
           title: "chore: valley ${{ steps.valley.outputs.target-version }}"
           commit-message: "chore: valley ${{ steps.valley.outputs.target-version }}"

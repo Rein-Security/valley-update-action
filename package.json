@@ -1,6 +1,6 @@
 {
   "name": "valley-update-action",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "license": "MIT",
   "description": "GitHub Action that resolves the Valley chart version a customer should run",
@@ -14,7 +14,7 @@
     "check-dist": "git diff --exit-code -- dist"
   },
   "dependencies": {
-    "@actions/core": "^1.11.1"
+    "@actions/core": "^3.0.1"
   },
   "devDependencies": {
     "@vercel/ncc": "^0.38.3"
