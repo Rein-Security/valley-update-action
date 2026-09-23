@@ -1,7 +1,8 @@
 {
   "name": "valley-update-action",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
+  "license": "MIT",
   "description": "GitHub Action that resolves the Valley chart version a customer should run",
   "type": "module",
   "engines": {
