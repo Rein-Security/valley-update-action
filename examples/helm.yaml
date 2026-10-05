@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 env:
-  CHANNEL: stable                       # stable or alpha
+  CHANNEL: stable                       # stable (alpha is retired since 1.0.0)
   REGISTRY: hub.reinsec.app             # Rein registry
   RELEASE: valley                       # helm release name
   NAMESPACE: valley                     # namespace Valley runs in
