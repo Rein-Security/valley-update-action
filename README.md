@@ -58,7 +58,7 @@ Workflows that open a pull request need the repository or organization setting *
 
 | Input | Required | Default | Meaning |
 | --- | --- | --- | --- |
-| `channel` | no | `stable` | `stable` or `alpha`. Picks the chart: `valley` or `valley-alpha`. Any version tag of that chart can be promoted, whatever its prerelease suffix. |
+| `channel` | no | `stable` | `stable` or `alpha`. Picks the chart: `valley` or `valley-alpha`. Any version tag of that chart can be promoted, whatever its prerelease suffix. `alpha` is retired since Valley 1.0.0 and only prints a warning; see [Upgrading to Valley 1.0.0](#upgrading-to-valley-100). |
 | `current-version` | yes | | The chart version you run today, e.g. `0.61.0`. Read it from your own config, see the examples. |
 | `registry` | no | `hub.reinsec.app` | Rein registry host. |
 | `registry-username` | yes | | Your registry username, `robot$<valleyId>`. Pull-only is enough. |
@@ -94,6 +94,14 @@ The pointer is only read. What lands in your config is always a fixed version li
 If the promoted version is **older** than the one you run, the action writes its outputs, prints an error, and fails the job. That almost always means a promotion mistake on our side rather than something you should apply. To roll back on purpose, set `allow-downgrade: true` for that run.
 
 A major version bump (for example `0.61.0` to `1.0.0`) can carry breaking changes or manual migration steps. When the target has a different major version than `current-version`, the action writes its outputs, prints an error, and **fails the job**, so your apply step never runs. The failed run is your signal to read the [release notes](https://github.com/Rein-Security/valley-update-action/releases). To let it through, set `allow-major: true` for that run and remove it afterwards.
+
+### Upgrading to Valley 1.0.0
+
+Valley 1.0.0 is the GA release. The stable `valley` chart now ships ClickHouse, the Altinity ClickHouse operator and Redpanda, which used to be in the `valley-alpha` chart. The values layout changed, so the major-version guard stops every pipeline on 0.x. That is intended:
+
+1. Read the 1.0.0 [release notes](https://github.com/Rein-Security/valley-update-action/releases) and update your values file.
+2. Run once with `allow-major: true`, then remove it.
+3. If you used `channel: alpha`, switch to `channel: stable`. `valley-alpha` gets no new releases. Moving from an alpha version such as `0.25.0-alpha.63` to `1.0.0` also counts as a major change, so step 2 applies to you too.
 
 ## You may not need this
 

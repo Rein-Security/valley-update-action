@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 env:
-  CHANNEL: stable                       # stable or alpha
+  CHANNEL: stable                       # stable (alpha is retired since 1.0.0)
   APP_FILE: argo/valley.yaml            # your ArgoCD Application manifest
   VERSION_PATH: .spec.source.targetRevision   # where the chart version sits in that file (yq path)
   PR_BRANCH: valley-update              # branch the update PR is opened from

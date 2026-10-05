@@ -14,6 +14,9 @@ export async function run() {
   const channelName = core.getInput("channel") || "stable";
   const channel = CHANNELS[channelName];
   if (!channel) throw new Error(`channel must be one of ${Object.keys(CHANNELS).join(", ")}, got '${channelName}'`);
+
+  // The alpha chart stopped at Valley 1.0.0; point its users at stable instead of failing silently later
+  if (channel.retired) core.warning(`The ${channelName} channel is retired: Valley 1.0.0 ships everything it had in the stable chart, and ${channel.chart} gets no new releases. Switch to channel: stable, see https://github.com/Rein-Security/valley-update-action#upgrading-to-valley-100.`);
   const host = core.getInput("registry") || "hub.reinsec.app";
   const current = normalizeVersion(core.getInput("current-version", { required: true }));
   const username = core.getInput("registry-username", { required: true });

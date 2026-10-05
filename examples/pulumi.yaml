@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 env:
-  CHANNEL: stable                       # stable or alpha
+  CHANNEL: stable                       # stable (alpha is retired since 1.0.0)
   PULUMI_STACK: prod                    # stack that runs Valley
   CONFIG_KEY: valley:version            # config key holding the chart version
   PULUMI_DIR: infra                     # folder with Pulumi.yaml and Pulumi.<stack>.yaml

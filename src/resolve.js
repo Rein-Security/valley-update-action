@@ -9,7 +9,7 @@ const SEMVER_TAG = /^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/;
 const PROMOTED_TAG = "stable";
 export const CHANNELS = {
   stable: { chart: "valley", pointer: PROMOTED_TAG, versionRe: SEMVER_TAG },
-  alpha: { chart: "valley-alpha", pointer: PROMOTED_TAG, versionRe: SEMVER_TAG },
+  alpha: { chart: "valley-alpha", pointer: PROMOTED_TAG, versionRe: SEMVER_TAG, retired: true },
 };
 
 const DEFAULT_MAX_CANDIDATES = 50;

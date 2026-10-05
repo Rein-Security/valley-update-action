@@ -15,7 +15,7 @@ on:
   workflow_dispatch:
 
 env:
-  CHANNEL: stable                       # stable or alpha
+  CHANNEL: stable                       # stable (alpha is retired since 1.0.0)
   CHART_DIR: charts/valley              # vendored chart folder, replaced on update
   VALUES_FILE: values/valley.yaml       # your values, must live outside CHART_DIR
   PR_BRANCH: valley-update              # branch the update PR is opened from

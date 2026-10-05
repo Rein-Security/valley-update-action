@@ -106,4 +106,14 @@ describe("action entrypoint", () => {
     assert.equal(code, 1);
     assert.match(stdout, /::error::.*rejected the credentials/);
   });
+
+  it("should warn that the alpha channel is retired", async () => {
+    const { stdout } = await runAction({ "current-version": "0.25.0-alpha.63", channel: "alpha" });
+    assert.match(stdout, /::warning::The alpha channel is retired.*channel: stable/);
+  });
+
+  it("should not warn on the stable channel", async () => {
+    const { stdout } = await runAction({ "current-version": "0.60.0" });
+    assert.doesNotMatch(stdout, /::warning::/);
+  });
 });
