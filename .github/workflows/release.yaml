@@ -1,0 +1,83 @@
+name: release
+
+# Cuts vX.Y.Z on the current main commit and moves the floating major tag (v1) onto it.
+# The tag ruleset only lets the Rein GitHub App write v* tags, and the "release" environment
+# requires a reviewer, so every release is a recorded approval of a reviewed main commit.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version, X.Y.Z (no leading v)"
+        required: true
+      notes:
+        description: "Release notes (markdown). Empty = generated from merged PRs."
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      # Reject anything that is not a plain semver
+      - name: Validate version
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then echo "::error::version '$VERSION' must be X.Y.Z"; exit 1; fi
+
+      - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        id: app-token
+        with:
+          app-id: ${{ secrets.REIN_APP_ID }}
+          private-key: ${{ secrets.REIN_APP_PRIVATE_KEY }}
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+
+      # The commit must still be main HEAD, must not be tagged already, and must have a green ci run
+      - name: Preflight
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          git fetch -q origin main --tags
+          if [[ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]]; then echo "::error::main moved since dispatch, re-run on the new HEAD"; exit 1; fi
+          if git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null; then echo "::error::tag v$VERSION already exists"; exit 1; fi
+          conclusion=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yaml/runs?head_sha=$GITHUB_SHA&branch=main&event=push" --jq '.workflow_runs[0].conclusion // "missing"')
+          if [[ "$conclusion" != "success" ]]; then echo "::error::ci on $GITHUB_SHA is '$conclusion', not success"; exit 1; fi
+
+      # Create vX.Y.Z and move the major tag onto the same commit
+      - name: Tag
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          major="v${VERSION%%.*}"
+          git tag "v$VERSION"
+          git tag -f "$major"
+          git push origin "refs/tags/v$VERSION"
+          git push -f origin "refs/tags/$major"
+          echo "::notice::v$VERSION and $major now point at $GITHUB_SHA"
+
+      # Publish the GitHub release for the new version
+      - name: Release
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          VERSION: ${{ inputs.version }}
+          NOTES: ${{ inputs.notes }}
+        run: |
+          if [[ -n "$NOTES" ]]; then
+            gh release create "v$VERSION" --title "v$VERSION" --notes "$NOTES" --verify-tag
+          else
+            gh release create "v$VERSION" --title "v$VERSION" --generate-notes --verify-tag
+          fi

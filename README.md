@@ -138,4 +138,4 @@ npm run build       # bundles src/ into dist/ with ncc; commit the result
 ACTION_ENTRY=dist/index.js npm test
 ```
 
-CI runs the tests on every PR and fails if `dist/` is stale. On `main` it also runs an integration test against `hub.reinsec.app` when a pull-only credential is configured in the `integration` environment. Releases are tags `v1.2.3` with a GitHub Release; the maintainer who cuts one moves the floating `v1` tag onto it in the same step. Release tags are protected, so no workflow can move them.
+CI runs the tests on every PR and fails if `dist/` is stale. On `main` it also runs an integration test against `hub.reinsec.app` when a pull-only credential is configured in the `integration` environment. Releases are tags `v1.2.3` with a GitHub Release, cut by the `release` workflow: run it from `main` with the version, a reviewer approves the `release` environment, and it tags the green `main` HEAD and moves the floating `v1` tag onto it. Release tags are protected; only the Rein GitHub App that workflow uses can write them.
